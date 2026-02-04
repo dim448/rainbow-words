@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="rainbow" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+      <stop offset="0%" stop-color="#ff4d4d"/>    <!-- красный -->
+      <stop offset="14.3%" stop-color="#ff8c1a"/> <!-- оранжевый -->
+      <stop offset="28.6%" stop-color="#ffcc00"/> <!-- жёлтый -->
+      <stop offset="42.9%" stop-color="#33cc33"/> <!-- зелёный -->
+      <stop offset="57.1%" stop-color="#00ccff"/> <!-- голубой -->
+      <stop offset="71.4%" stop-color="#3366ff"/> <!-- синий -->
+      <stop offset="85.7%" stop-color="#cc33ff"/> <!-- фиолетовый -->
+      <stop offset="100%" stop-color="#ff4d4d"/>  <!-- снова красный -->
+    </radialGradient>
+  </defs>
+  <circle cx="96" cy="96" r="90" fill="url(#rainbow)" stroke="#e0e0ff" stroke-width="6"/>
+  <text x="96" y="108" font-size="48" text-anchor="middle" fill="white" font-weight="bold">Rainbow</text>
+</svg>
