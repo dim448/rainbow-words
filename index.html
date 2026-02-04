@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Радуга слов</title>
+
+  <!-- PWA метатеги -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#a0d0ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f1a;
+      color: #e0e0ff;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      color: #a0d0ff;
+      margin-bottom: 1.2em;
+    }
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      padding: 14px;
+      font-size: 1.1rem;
+      background: #1a1a2e;
+      color: #f0f0ff;
+      border: 1px solid #444466;
+      border-radius: 8px;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #clearBtn {
+      background: #ff4d4d;
+      color: white;
+      display: none;
+    }
+    #clearBtn.visible {
+      display: inline-block;
+    }
+    #clearBtn:hover {
+      background: #ff1a1a;
+      transform: translateY(-1px);
+    }
+    #loadPcBtn, #loadSavedBtn {
+      background: #4d94ff;
+      color: white;
+    }
+    #loadPcBtn:hover, #loadSavedBtn:hover {
+      background: #1a75ff;
+      transform: translateY(-1px);
+    }
+    #wordCount {
+      font-size: 0.95rem;
+      color: #a0a0ff;
+      margin-left: auto;
+    }
+    #output {
+      margin-top: 24px;
+      padding: 16px;
+      background: #141426;
+      border-radius: 8px;
+      border: 1px solid #333355;
+      min-height: 80px;
+      line-height: 1.6;
+      word-wrap: break-word;
+    }
+    .word {
+      display: inline;
+      margin-right: 0.35em;
+    }
+    .status {
+      font-size: 0.9rem;
+      color: #ffcc00;
+      margin-top: 8px;
+    }
+    .loading {
+      color: #66cc99;
+      font-style: italic;
+    }
+    /* Цвета по кругу */
+    .c1 { color: #ff4d4d; }
+    .c2 { color: #ff8c1a; }
+    .c3 { color: #ffcc00; }
+    .c4 { color: #33cc33; }
+    .c5 { color: #00ccff; }
+    .c6 { color: #3366ff; }
+    .c7 { color: #cc33ff; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Радуга слов</h1>
+
+  <div class="controls">
+    <button id="clearBtn">Очистить</button>
+    <button id="loadPcBtn">Загрузить с ПК</button>
+    <button id="loadSavedBtn">Загрузить сохранённый</button>
+    <div id="wordCount">Слов: 0</div>
+  </div>
+
+  <textarea id="input" placeholder="Введи текст сюда... или загрузи файл (.txt, .md, .djvu и др.)"></textarea>
+
+  <div id="status" class="status"></div>
+
+  <div id="output"></div>
+</div>
+
+<!-- Скрытый input для выбора файла -->
+<input type="file" id="fileInput" accept=".txt,.md,.html,.htm,.djvu,text/plain" style="display:none;" />
+
+<!-- DjVu.js -->
+<script src="https://cdn.jsdelivr.net/npm/djvujs@latest/dist/djvu.min.js"></script>
+
+<script>
+// Цвета по кругу
+const colors = ['c1','c2','c3','c4','c5','c6','c7'];
+
+const input = document.getElementById('input');
+const output = document.getElementById('output');
+const clearBtn = document.getElementById('clearBtn');
+const loadPcBtn = document.getElementById('loadPcBtn');
+const loadSavedBtn = document.getElementById('loadSavedBtn');
+const wordCount = document.getElementById('wordCount');
+const statusDiv = document.getElementById('status');
+const fileInput = document.getElementById('fileInput');
+
+const STORAGE_KEY = 'rainbow-text-content';
+
+// Загрузка из localStorage при старте
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    input.value = saved;
+    rainbowText();
+    toggleClearButton();
+    updateWordCount();
+  }
+});
+
+function rainbowText() {
+  const text = input.value.trim();
+  const hasText = text.length > 0;
+
+  toggleClearButton(hasText);
+  updateWordCount(text);
+
+  if (!hasText) {
+    output.innerHTML = '';
+    return;
+  }
+
+  const tokens = text.split(/(\s+|\S+)/g).filter(Boolean);
+  let html = '';
+
+  tokens.forEach((token, i) => {
+    if (/^\s+$/.test(token)) {
+      html += token;
+    } else {
+      const colorClass = colors[i % colors.length];
+      html += `<span class="word ${colorClass}">${escapeHtml(token)}</span>`;
+    }
+  });
+
+  output.innerHTML = html;
+
+  // Сохраняем
+  localStorage.setItem(STORAGE_KEY, input.value);
+}
+
+// Защита от XSS (на случай загрузки HTML-файлов)
+function escapeHtml(unsafe) {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function toggleClearButton(show = input.value.trim().length > 0) {
+  clearBtn.classList.toggle('visible', show);
+}
+
+function updateWordCount(text = input.value) {
+  const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+  wordCount.textContent = `Слов: ${words.length}`;
+}
+
+// Очистка
+clearBtn.addEventListener('click', () => {
+  input.value = '';
+  output.innerHTML = '';
+  wordCount.textContent = 'Слов: 0';
+  toggleClearButton(false);
+  localStorage.removeItem(STORAGE_KEY);
+  statusDiv.textContent = '';
+  input.focus();
+});
+
+// Загрузка с ПК
+loadPcBtn.addEventListener('click', () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  statusDiv.textContent = `Загружается: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} МБ)`;
+  statusDiv.classList.add('loading');
+
+  try {
+    let text = '';
+
+    if (file.name.toLowerCase().endsWith('.djvu')) {
+      const arrayBuffer = await file.arrayBuffer();
+      const djvu = await DjVu.createDocument(arrayBuffer);
+      text = await djvu.getText();
+      if (!text.trim()) {
+        throw new Error('В файле .djvu нет извлекаемого текста');
+      }
+    } else {
+      text = await file.text();
+    }
+
+    input.value = text;
+    rainbowText();
+    updateWordCount();
+    statusDiv.textContent = `Готово: ${file.name} (${text.split(/\s+/).filter(w => w.length > 0).length} слов)`;
+    statusDiv.classList.remove('loading');
+    input.focus();
+  } catch (err) {
+    statusDiv.textContent = `Ошибка при загрузке: ${err.message}`;
+    statusDiv.classList.remove('loading');
+    console.error(err);
+  }
+
+  e.target.value = ''; // сброс input
+});
+
+// Загрузка сохранённого
+loadSavedBtn.addEventListener('click', () => {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    input.value = saved;
+    rainbowText();
+    updateWordCount();
+    statusDiv.textContent = 'Загружен сохранённый текст';
+    input.focus();
+  } else {
+    statusDiv.textContent = 'Сохранённого текста нет';
+  }
+});
+
+// Live-обновление
+input.addEventListener('input', rainbowText);
+
+// Инициализация
+rainbowText();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('Service Worker зарегистрирован', reg))
+        .catch(err => console.log('Ошибка SW:', err));
+    });
+  }
+</script>
+</body>
+</html>
